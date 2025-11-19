@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RapidAid — Emergency QR Card (vCard JSON)</title>
+  <style>
+    :root{
+      --accent:#ff6b6b;
+      --bg:#0f1724;
+      --card-bg:#ffffff;
+      --muted:#6b7280;
+      --paper-width:360px; /* preview scale */
+    }
+    body{
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      margin:0;background:#0b1220;color:#fff;
+      display:flex;gap:24px;padding:28px;min-height:100vh;box-sizing:border-box;
+    }
+    .controls{
+      width:380px;max-height:calc(100vh - 56px);overflow:auto;padding:18px;border-radius:12px;
+      background:linear-gradient(180deg,#071025 0%, #0c1725 100%);box-shadow:0 8px 30px rgba(2,6,23,0.6)
+    }
+    h1{font-size:18px;margin:0 0 12px 0}
+    label{display:block;color:#cbd5e1;font-size:13px;margin-top:10px}
+    input[type="text"], input[type="tel"], textarea, select {
+      width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);
+      background:rgba(255,255,255,0.02);color:#fff;font-size:14px;box-sizing:border-box;
+    }
+    textarea{min-height:64px;resize:vertical}
+    .row{display:flex;gap:8px}
+    .btn{display:inline-block;padding:10px 12px;border-radius:10px;background:var(--accent);color:#fff;border:0;cursor:pointer;margin-top:12px}
+    .btn.secondary{background:#1f2937}
+    .small{font-size:12px;color:var(--muted)}
+    .preview{flex:1;display:flex;align-items:center;justify-content:center}
+    .phone-frame{width:var(--paper-width);height:640px;background:#111;border-radius:24px;padding:12px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 40px rgba(2,6,23,0.6)}
+    .canvas-wrap{background:white;border-radius:18px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:0}
+    .hint{font-size:12px;color:#9aa4b2;margin-top:8px}
+    .theme-row{display:flex;gap:8px;margin-top:8px}
+    .theme-dot{width:36px;height:36px;border-radius:8px;cursor:pointer;box-shadow:0 4px 14px rgba(2,6,23,0.4);border:2px solid rgba(255,255,255,0.04)}
+    .theme-dot.selected{outline:2px solid rgba(255,255,255,0.07)}
+    .footer-note{font-size:12px;color:#9aa4b2;margin-top:12px}
+    .controls a{color:var(--accent);text-decoration:none}
+    .control-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .small-muted{font-size:12px;color:#9aa4b2;margin-top:6px}
+    .wall-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+    .wall-thumb{width:100%;height:120px;object-fit:cover;border-radius:10px;cursor:pointer;border:2px solid transparent}
+    .wall-thumb.selected{border-color:var(--accent)}
+    .row-inline{display:flex;gap:8px;align-items:center}
+    .muted{color:#9aa4b2;font-size:13px;margin-top:6px}
+    /* responsive */
+    @media (max-width:900px){body{flex-direction:column;padding:14px} .controls{width:100%} .preview{width:100%} }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <h1>RapidAid — Emergency QR Card</h1>
+    <div class="small-muted">Fill the fields. Choose text color → wallpaper → style. QR contains a JSON payload with vCard strings for each contact.</div>
+
+    <label>Full name</label>
+    <input id="name" type="text" placeholder="e.g., Priya Sharma">
+
+    <div class="row">
+      <div style="flex:1">
+        <label>Blood group</label>
+        <input id="blood" type="text" placeholder="e.g., B+, O-">
+      </div>
+      <div style="width:120px">
+        <label>Age</label>
+        <input id="age" type="text" placeholder="e.g., 24">
+      </div>
+    </div>
+
+    <label>Allergies (comma separated)</label>
+    <input id="allergies" type="text" placeholder="e.g., Penicillin, Peanuts">
+
+    <label>Medications / conditions</label>
+    <input id="meds" type="text" placeholder="e.g., Insulin, Asthma">
+
+    <label>Emergency contacts (one per line: Name,Phone)</label>
+    <textarea id="contacts" placeholder="John Doe,+919876543210&#10;Sister,+919123456789"></textarea>
+
+    <label>Short instructions (what first responders should know)</label>
+    <textarea id="instructions" placeholder="e.g., No CPR if DNR signed; carry epipen"></textarea>
+
+    <!-- keep Template & Text color as original order, then wallpaper chooser moved AFTER text color -->
+    <label>Template (card color)</label>
+    <div class="theme-row" id="templateRow">
+      <div class="theme-dot" style="background:#ffffff" data-bg="#ffffff" title="White (high contrast)"></div>
+      <div class="theme-dot" style="background:#fffbeb" data-bg="#fffbeb" title="Warm"></div>
+      <div class="theme-dot" style="background:#f0f9ff" data-bg="#f0f9ff" title="Cool"></div>
+      <div class="theme-dot" style="background:#0b1320" data-bg="#0b1320" title="Dark"></div>
+      <div class="theme-dot" style="background:#ff6b6b" data-bg="#ff6b6b" title="Red accent"></div>
+    </div>
+
+        <label style="margin-top:12px">Card Style</label>
+    <div class="row-inline" style="margin-top:6px">
+      <select id="cardStyle" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:#fff">
+        <option value="solid">Solid (opaque card)</option>
+        <option value="translucent">Translucent (flat opacity)</option>
+        <option value="glass">Glass (blurred background)</option>
+      </select>
+    </div>
+
+
+    <label style="margin-top:10px">Transparency (works for Translucent & Glass)</label>
+    <input id="transSlider" type="range" min="5" max="95" value="30">
+
+    <label>Text color (auto-detected) or override</label>
+    <select id="textColor">
+      <option value="auto">Auto</option>
+      <option value="#000000">Black</option>
+      <option value="#ffffff">White</option>
+      <option value="#0b1320">Dark</option>
+    </select>
+
+    <!-- Wallpaper chooser is moved here -->
+    <label style="margin-top:12px">Portrait Wallpapers (preloaded)</label>
+    <div class="wall-grid" id="wallGrid">
+      <!-- preloaded portrait wallpaper URLs (Unsplash portrait crops) -->
+      <img class="wall-thumb" src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1080&h=1920&crop=entropy&auto=format&q=60&fit=crop" crossorigin="anonymous">
+      <!--<img class="wall-thumb" src="https://images.unsplash.com/photo-1499084732479-de2c02d45fc4?w=1080&h=1920&crop=entropy&auto=format&q=60&fit=crop" crossorigin="anonymous"> -->
+      <img class="wall-thumb" src="https://images.unsplash.com/photo-1503264116251-35a269479413?w=1080&h=1920&crop=entropy&auto=format&q=60&fit=crop" crossorigin="anonymous">
+      <img class="wall-thumb" src="https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1080&h=1920&crop=entropy&auto=format&q=60&fit=crop" crossorigin="anonymous">
+      <img class="wall-thumb" src="https://images.unsplash.com/photo-1496307042754-b4aa456c4a2d?w=1080&h=1920&crop=entropy&auto=format&q=60&fit=crop" crossorigin="anonymous">
+      <img class="wall-thumb" src="https://images.unsplash.com/photo-1499336315816-097655dcfbda?w=1080&h=1920&crop=entropy&auto=format&q=60&fit=crop" crossorigin="anonymous">
+    </div>
+
+    <label style="margin-top:12px">Upload wallpaper (from phone)</label>
+    <input id="uploadWall" type="file" accept="image/*">
+
+
+
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+      <button class="btn" id="generate">Generate</button>
+      <button class="btn secondary" id="download">Download PNG</button>
+    </div>
+
+    <div class="hint">Wallpaper size: <span id="sizeLabel">1080 × 1920</span>. You can change the target size in the script if needed.</div>
+
+    <div class="footer-note" id="notice">
+      Privacy: Everything is generated locally in your browser. If a preloaded image cannot be used due to cross-origin restrictions, the canvas download may be blocked by the browser — you'll see a warning. Uploading from your phone avoids that.
+    </div>
+  </div>
+
+  <div class="preview">
+    <div class="phone-frame" title="Preview">
+      <div class="canvas-wrap" id="canvasWrap">
+        <!-- canvas inserted by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- QRious (small QR generator) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+
+  <script>
+    // Portrait wallpaper target size
+    const TARGET_W = 1080;
+    const TARGET_H = 1920;
+
+    const canvasWrap = document.getElementById('canvasWrap');
+    let canvas = document.createElement('canvas');
+    canvas.width = TARGET_W;
+    canvas.height = TARGET_H;
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvasWrap.appendChild(canvas);
+
+    // Use alpha true because for glass we draw blurred content; but toDataURL requires no tainting.
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    // UI refs
+    const nameEl = document.getElementById('name');
+    const bloodEl = document.getElementById('blood');
+    const ageEl = document.getElementById('age');
+    const allergiesEl = document.getElementById('allergies');
+    const medsEl = document.getElementById('meds');
+    const contactsEl = document.getElementById('contacts');
+    const instructionsEl = document.getElementById('instructions');
+    const generateBtn = document.getElementById('generate');
+    const downloadBtn = document.getElementById('download');
+    const sizeLabel = document.getElementById('sizeLabel');
+    const themeDots = Array.from(document.querySelectorAll('.theme-dot'));
+    const textColorSelect = document.getElementById('textColor');
+    const transSlider = document.getElementById('transSlider');
+    const cardStyleSelect = document.getElementById('cardStyle');
+    const wallGrid = document.getElementById('wallGrid');
+    const uploadWall = document.getElementById('uploadWall');
+    const notice = document.getElementById('notice');
+
+    // wallpaper object and source
+    let wallpaperImg = null;
+    let wallpaperSource = null; // 'preloaded' | 'upload' | null
+
+    // default select first template and wallpaper
+    if (themeDots.length>0) themeDots[0].classList.add('selected');
+    const thumbs = Array.from(document.querySelectorAll('.wall-thumb'));
+    if (thumbs.length > 0) {
+      thumbs[0].classList.add('selected');
+      setWallpaperFromUrl(thumbs[0].src, 'preloaded');
+    }
+
+    // preloaded selection handler
+    thumbs.forEach(t => {
+      t.addEventListener('click', () => {
+        thumbs.forEach(x=>x.classList.remove('selected'));
+        t.classList.add('selected');
+        setWallpaperFromUrl(t.src, 'preloaded');
+      });
+    });
+
+    // upload handler
+    uploadWall.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => setWallpaperFromUrl(ev.target.result, 'upload', true);
+      reader.readAsDataURL(file);
+    });
+
+    function setWallpaperFromUrl(url, source='preloaded', isDataURL=false) {
+      wallpaperImg = new Image();
+      if (!isDataURL) wallpaperImg.crossOrigin = 'anonymous';
+      wallpaperImg.src = url;
+      wallpaperSource = source;
+      wallpaperImg.onload = () => {
+        notice.innerText = "Wallpaper loaded (preview updated).";
+        drawPreview();
+      };
+      wallpaperImg.onerror = (err) => {
+        console.warn("Wallpaper load error", err);
+        wallpaperImg = null;
+        wallpaperSource = null;
+        notice.innerText = "Could not load wallpaper (CORS or network). Upload a file from device to enable download.";
+        drawPreview();
+      };
+    }
+
+    // theme selection
+    themeDots.forEach(d => {
+      d.addEventListener('click', () => {
+        themeDots.forEach(dd => dd.classList.remove('selected'));
+        d.classList.add('selected');
+        drawPreview();
+      });
+    });
+
+    // slider & style listeners
+    function updateSliderState() {
+      const style = cardStyleSelect.value;
+      if (style === 'solid') {
+        transSlider.disabled = true;
+        transSlider.style.opacity = 0.6;
+      } else {
+        transSlider.disabled = false;
+        transSlider.style.opacity = 1;
+      }
+    }
+    cardStyleSelect.addEventListener('change', () => { updateSliderState(); drawPreview(); });
+    transSlider.addEventListener('input', drawPreview);
+    textColorSelect.addEventListener('change', drawPreview);
+    updateSliderState();
+
+    // ---------- DRAW PREVIEW ----------
+    function drawPreview() {
+      // fill background in case wallpaper fails
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // 1) draw wallpaper, if available
+      if (wallpaperImg && wallpaperImg.complete) {
+        try { ctx.drawImage(wallpaperImg, 0, 0, canvas.width, canvas.height); }
+        catch(e) { console.warn("drawImage failed (CORS?)", e); ctx.fillStyle = "#111"; ctx.fillRect(0,0,canvas.width,canvas.height); }
+      } else {
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+      }
+
+      // card geometry (anchored)
+      const outerPad = Math.round(canvas.width * 0.06); // same pad used earlier
+      const cardX = outerPad, cardY = outerPad;
+      const cardW = canvas.width - outerPad*2, cardH = canvas.height - outerPad*2;
+      const cornerR = 28;
+
+      const style = cardStyleSelect.value;
+      const baseColorHex = document.querySelector('.theme-dot.selected') ? document.querySelector('.theme-dot.selected').dataset.bg : "#ffffff";
+      const transVal = Number(transSlider.value)/100;
+
+      if (style === 'solid') {
+        // opaque card
+        ctx.fillStyle = baseColorHex;
+        roundRect(ctx, cardX, cardY, cardW, cardH, cornerR, true);
+      } else if (style === 'translucent') {
+        // flat translucency: alpha = 1 - transVal (slider: higher -> more transparent)
+        const alpha = 1 - transVal;
+        const rgb = hexToRgb(baseColorHex) || {r:255,g:255,b:255};
+        ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+        roundRect(ctx, cardX, cardY, cardW, cardH, cornerR, true);
+      } else if (style === 'glass') {
+        // glass: draw blurred portion of wallpaper into offscreen and draw it at card area
+        // Offscreen approach: draw wallpaper portion scaled to off canvas, then blur via filter on another offscreen.
+        const off = document.createElement('canvas');
+        off.width = cardW; off.height = cardH;
+        const offCtx = off.getContext('2d');
+
+        try {
+          if (wallpaperImg && wallpaperImg.complete) {
+            // draw wallpaper scaled to off such that it visually matches the main canvas portion
+            offCtx.drawImage(wallpaperImg, 0, 0, off.width, off.height);
+            // create blurred copy
+            const off2 = document.createElement('canvas');
+            off2.width = off.width; off2.height = off.height;
+            const off2Ctx = off2.getContext('2d');
+            // blur amount inversely proportional to transVal (slider bigger -> more transparent -> less blur)
+            const blurPx = Math.max(6, Math.round((1 - transVal) * 24));
+            off2Ctx.filter = `blur(${blurPx}px)`;
+            off2Ctx.drawImage(off, 0, 0);
+            // draw blurred onto main canvas at card pos
+            ctx.drawImage(off2, cardX, cardY, cardW, cardH);
+          } else {
+            ctx.fillStyle = "rgba(255,255,255,0.06)";
+            roundRect(ctx, cardX, cardY, cardW, cardH, cornerR, true);
+          }
+        } catch(e) {
+          // CORS or other error -> fallback to translucent
+          const rgb = hexToRgb(baseColorHex) || {r:255,g:255,b:255};
+          const alpha = 1 - transVal;
+          ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+          roundRect(ctx, cardX, cardY, cardW, cardH, cornerR, true);
+        }
+
+        // overlay tint
+        const tintAlpha = Math.min(0.6, 0.18 + (1 - transVal) * 0.6);
+        const tint = hexToRgb(baseColorHex) || {r:255,g:255,b:255};
+        ctx.fillStyle = `rgba(${tint.r},${tint.g},${tint.b},${tintAlpha})`;
+        roundRect(ctx, cardX, cardY, cardW, cardH, cornerR, true);
+      }
+
+      // Clip to card area to ensure content doesn't draw outside
+      ctx.save();
+      createRoundedClip(ctx, cardX, cardY, cardW, cardH, cornerR);
+
+      // Now draw inner content anchored INSIDE the card (Option 2 spacing)
+      // set an inner padding (space between card edge and content)
+      const innerPad = Math.round(cardW * 0.06); // e.g., ~6% of card width
+      const cx = cardX + innerPad;
+      let cy = cardY + innerPad;
+
+      // Title
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = pickTextColor(baseColorHex);
+      ctx.font = `600 ${Math.round(cardW * 0.045)}px sans-serif`; // moderate size
+      ctx.fillText('EMERGENCY INFO', cx, cy);
+      cy += Math.round(cardW * 0.055) + 8; // space after title
+
+      // Name (large)
+      ctx.font = `700 ${Math.round(cardW * 0.08)}px sans-serif`;
+      const name = nameEl.value.trim() || '—';
+      ctx.fillText(name, cx, cy);
+      cy += Math.round(cardW * 0.11) + 6;
+
+      // small details row (blood + age)
+      ctx.font = `${Math.round(cardW * 0.045)}px sans-serif`;
+      const bloodStr = bloodEl.value.trim() || 'Blood: —';
+      const ageStr = ageEl.value.trim() ? `Age: ${ageEl.value.trim()}` : '';
+      ctx.fillText(bloodStr + (ageStr ? '   •   ' + ageStr : ''), cx, cy);
+      cy += Math.round(cardW * 0.06) + 12;
+
+      // thin divider (to the left area, excluding QR space)
+      const qrSize = Math.round(cardW * 0.32);
+      const dividerW = cardW - innerPad*2 - qrSize - 12;
+      ctx.fillStyle = shadeColorToUse(pickTextColor(baseColorHex), -20);
+      ctx.fillRect(cx, cy, Math.max(40, dividerW), 2);
+      cy += 18;
+
+      // Sections with looser spacing (Option 2)
+      const sectionTitleSize = Math.round(cardW * 0.048);
+      const sectionBodySize = Math.round(cardW * 0.04);
+      ctx.fillStyle = pickTextColor(baseColorHex);
+
+      // Allergies
+      ctx.font = `700 ${sectionTitleSize}px sans-serif`;
+      ctx.fillText('Allergies', cx, cy);
+      cy += sectionTitleSize + 6;
+      ctx.font = `${sectionBodySize}px sans-serif`;
+      wrapText(ctx, allergiesEl.value.trim() || 'None', cx, cy, dividerW, sectionBodySize + 8);
+      cy += sectionBodySize*2 + 18;
+
+      // Meds
+      ctx.font = `700 ${sectionTitleSize}px sans-serif`;
+      ctx.fillText('Medications / Conditions', cx, cy);
+      cy += sectionTitleSize + 6;
+      ctx.font = `${sectionBodySize}px sans-serif`;
+      wrapText(ctx, medsEl.value.trim() || 'None', cx, cy, dividerW, sectionBodySize + 8);
+      cy += sectionBodySize*2 + 18;
+
+      // Instructions
+      ctx.font = `700 ${sectionTitleSize}px sans-serif`;
+      ctx.fillText('First Responder Notes', cx, cy);
+      cy += sectionTitleSize + 6;
+      ctx.font = `${sectionBodySize}px sans-serif`;
+      wrapText(ctx, instructionsEl.value.trim() || 'No special instructions', cx, cy, dividerW, sectionBodySize + 8);
+      cy += sectionBodySize*3 + 18;
+
+      // Contacts
+      ctx.font = `700 ${sectionTitleSize}px sans-serif`;
+      ctx.fillText('Emergency Contacts', cx, cy);
+      cy += sectionTitleSize + 6;
+      ctx.font = `${sectionBodySize}px sans-serif`;
+      wrapText(ctx, contactsEl.value.trim() || 'No contacts added', cx, cy, dividerW, sectionBodySize + 8);
+
+      // Under QR caption
+      const qrX = cardX + cardW - innerPad - qrSize;
+      const qrY = cardY + cardH - innerPad - qrSize;
+      ctx.font = `${Math.round(cardW * 0.035)}px sans-serif`;
+      ctx.fillStyle = shadeColorToUse(pickTextColor(baseColorHex), -30);
+      ctx.fillText('Scan for full details', qrX, qrY + qrSize + 12);
+
+      // Draw QR (payload contains vCards array)
+      try {
+        const payload = buildVCardPayload();
+        const qr = new QRious({ value: payload, size: qrSize });
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+        img.src = qr.toDataURL();
+      } catch(e) {
+        console.warn("QR generation/draw issue", e);
+      }
+
+      ctx.restore(); // end clipping
+    }
+
+    // Utility: build JSON payload containing data + vcards array (Option B)
+    function buildVCardPayload() {
+      const name = nameEl.value.trim() || '';
+      const blood = bloodEl.value.trim() || '';
+      const age = ageEl.value.trim() || '';
+      const allergies = allergiesEl.value.trim() || '';
+      const meds = medsEl.value.trim() || '';
+      const instructions = instructionsEl.value.trim() || '';
+
+      // parse contacts lines -> {label, phone, vcard}
+      const contactsRaw = contactsEl.value.trim().split(/\n/).map(s=>s.trim()).filter(Boolean);
+      const contacts = contactsRaw.map(line => {
+        // expected "Name,Phone" or just phone or "Name <phone>"
+        let namePart = '';
+        let phonePart = '';
+        if (line.includes(',')) {
+          const parts = line.split(',');
+          namePart = parts[0].trim();
+          phonePart = parts.slice(1).join(',').trim();
+        } else {
+          // try to separate by last space if looks like "Name 9876..."
+          const m = line.match(/(.+)\s+(\+?\d[\d\s-]+)$/);
+          if (m) {
+            namePart = m[1].trim();
+            phonePart = m[2].trim();
+          } else {
+            // fallback: treat whole as phone
+            phonePart = line;
+            namePart = '';
+          }
+        }
+        // normalize phone: remove spaces
+        const phoneNormalized = phonePart.replace(/\s+/g, '');
+        // build vcard string (VERSION:3.0)
+        const vcardLines = [
+          'BEGIN:VCARD',
+          'VERSION:3.0',
+          `FN:${escapeVCardField(namePart || phoneNormalized)}`,
+          `TEL;TYPE=CELL:${phoneNormalized}`,
+          'END:VCARD'
+        ];
+        return {
+          label: namePart || phoneNormalized,
+          phone: phoneNormalized,
+          vcard: vcardLines.join('\\n') // store as string with \n escaped inside JSON so scanners that parse JSON then vcard can unescape
+        };
+      });
+
+      const payload = {
+        name, blood_group: blood, age, allergies, meds, instructions,
+        contacts // array of {label, phone, vcard}
+      };
+      return JSON.stringify(payload);
+    }
+
+    // escape vcard fields (basic)
+    function escapeVCardField(s) {
+      if (!s) return '';
+      return s.replace(/,/g,'\\,').replace(/\n/g,'\\n').replace(/;/g,'\\;');
+    }
+
+    // helpers
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(' ');
+      let line = '';
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+          ctx.fillText(line, x, y);
+          line = words[n] + ' ';
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+
+    function hexToRgb(hex) {
+      if (!hex) return null;
+      hex = hex.replace('#','');
+      if (hex.length === 3) hex = hex.split('').map(h=>h+h).join('');
+      if (hex.length !== 6) return null;
+      const bigint = parseInt(hex, 16);
+      return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+    }
+    function luminance(r,g,b) {
+      return 0.299*r + 0.587*g + 0.114*b;
+    }
+    function pickTextColor(bg) {
+      if (!bg) return '#000';
+      const c = hexToRgb(bg);
+      if (!c) return '#000';
+      const lum = luminance(c.r,c.g,c.b);
+      return lum > 150 ? '#0b1320' : '#ffffff';
+    }
+    function shadeColorToUse(hexOrRgb, percent) {
+      let c = (typeof hexOrRgb === 'string') ? hexToRgb(hexOrRgb) : hexOrRgb;
+      if (!c) return '#ccc';
+      const r = Math.min(255, Math.max(0, c.r + Math.round(255*percent/100)));
+      const g = Math.min(255, Math.max(0, c.g + Math.round(255*percent/100)));
+      const b = Math.min(255, Math.max(0, c.b + Math.round(255*percent/100)));
+      return `rgb(${r},${g},${b})`;
+    }
+    function roundRect(ctx, x,y,w,h,r,fill) {
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y, x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x, y+h, r);
+      ctx.arcTo(x, y+h, x, y, r);
+      ctx.arcTo(x, y, x+w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+    }
+    function createRoundedClip(ctx, x,y,w,h,r) {
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y, x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x, y+h, r);
+      ctx.arcTo(x, y+h, x, y, r);
+      ctx.arcTo(x, y, x+w, y, r);
+      ctx.closePath();
+      ctx.clip();
+    }
+
+    // initial draw
+    drawPreview();
+
+    // Buttons
+    generateBtn.addEventListener('click', () => {
+      drawPreview();
+      sizeLabel.innerText = `${TARGET_W} × ${TARGET_H}`;
+      notice.innerText = "Preview generated. If download fails due to cross-origin, upload wallpaper from your device.";
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      drawPreview();
+      setTimeout(()=> {
+        try {
+          const dataUrl = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.download = `RapidAid_${(nameEl.value||'card').replace(/\s+/g,'_')}.png`;
+          link.href = dataUrl;
+          link.click();
+          notice.innerText = "Downloaded. Move to your phone and set as lock-screen/wallpaper.";
+        } catch (e) {
+          console.error("Download failed (likely CORS): ", e);
+          notice.innerText = "Download blocked by browser due to cross-origin image. Upload wallpaper from your device to enable download.";
+          alert("Download blocked (CORS). Upload wallpaper from your device or host images with CORS enabled.");
+        }
+      }, 220);
+    });
+
+    // keyboard shortcut
+    window.addEventListener('keydown', (e)=> {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault(); downloadBtn.click();
+      }
+    });
+
+  </script>
+</body>
+</html>
