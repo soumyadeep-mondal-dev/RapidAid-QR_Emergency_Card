@@ -4,6 +4,12 @@
 
 RapidAid turns any smartphone lock screen into a **life-saving medical ID**, showing essential details even when the phone is locked. It generates a beautifully designed emergency wallpaper containing medical information, responder instructions, and vCard-enabled emergency contacts. One scan of the QR code reveals everything in a clean, structured, universally readable format—**even if the user cannot speak for themselves.**
 
+---
+
+## 🌟 Why RapidAid Matters
+
+During emergencies, **seconds matter**. When someone is unconscious or disoriented, responders have no access to their medical history, allergies, or emergency contacts. Phones stay locked, apps require permission, and precious time is lost.
+
 **RapidAid solves this by bringing critical information to the surface.**
 
 Your lock screen becomes a **silent first responder**:
