@@ -130,7 +130,6 @@ This ensures:
 
 ---
 
----
 
 # 🤝 Contributing
 
