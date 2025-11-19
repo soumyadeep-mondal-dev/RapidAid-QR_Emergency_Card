@@ -6,7 +6,7 @@ RapidAid turns any smartphone lock screen into a **life-saving medical ID**, sho
 
 ---
 
-## 🌟 Why RapidAid Matters (Story + Impact)
+## 🌟 Why RapidAid Matters
 
 During emergencies, **seconds matter**. When someone is unconscious or disoriented, responders have no access to their medical history, allergies, or emergency contacts. Phones stay locked, apps require permission, and precious time is lost.
 
